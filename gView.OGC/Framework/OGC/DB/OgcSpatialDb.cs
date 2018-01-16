@@ -385,7 +385,7 @@ namespace gView.Framework.OGC.DB
                 }
 
                 sb.Append(",\n");
-                sb.Append(" \"" + fieldName + "\" ");
+                sb.Append(DbColumnName(fieldName) + " ");
 
                 sb.Append(DbDictionary(field));
             }
@@ -441,6 +441,16 @@ namespace gView.Framework.OGC.DB
             }
         }
 
+        virtual protected string DbColumnName(string colName)
+        {
+            return "\"" + colName + "\"";
+        }
+
+        virtual protected string DbParameterName(string name)
+        {
+            return "@" + name;
+        }
+
         IFeatureDataset IFeatureDatabase.this[string name]
         {
             get
@@ -464,10 +474,12 @@ namespace gView.Framework.OGC.DB
                     //NpgsqlCommand command = new NpgsqlCommand("DROP TABLE " + name, connection);
                     //NpgsqlCommand command = new NpgsqlCommand("SELECT DropGeometryTable ('','" + name + "')", connection);
                     DbCommand command = this.ProviderFactory.CreateCommand();
-                    command.CommandText = DropGeometryTable("", name);
                     command.Connection = connection;
-
-                    command.ExecuteNonQuery();
+                    foreach (var commandText in DropGeometryTable("", name).Split(';'))
+                    {
+                        command.CommandText = commandText;
+                        command.ExecuteNonQuery();
+                    }
                 }
                 return true;
             }
@@ -564,21 +576,21 @@ namespace gView.Framework.OGC.DB
                             if (asParameter == true)
                             {
                                 DbParameter parameter = this.ProviderFactory.CreateParameter();
-                                parameter.ParameterName = "@" + fClass.ShapeFieldName;
+                                parameter.ParameterName = this.DbParameterName(fClass.ShapeFieldName);
                                 parameter.Value = shapeObject != null ? shapeObject : DBNull.Value;
-                                fields.Append("\"" + fClass.ShapeFieldName + "\"");
+                                fields.Append(this.DbColumnName(fClass.ShapeFieldName));
 
                                 string paramExpresssion = InsertShapeParameterExpression((OgcSpatialFeatureclass)fClass, feature.Shape);
                                 if (!String.IsNullOrWhiteSpace(paramExpresssion))
-                                    paramExpresssion = String.Format(paramExpresssion, "@" + fClass.ShapeFieldName);
+                                    paramExpresssion = String.Format(paramExpresssion, this.DbParameterName(fClass.ShapeFieldName));
                                 else
-                                    paramExpresssion = "@" + fClass.ShapeFieldName;
+                                    paramExpresssion = this.DbParameterName(fClass.ShapeFieldName);
                                 parameters.Append(paramExpresssion);
                                 command.Parameters.Add(parameter);
                             }
                             else
                             {
-                                fields.Append("\"" + fClass.ShapeFieldName + "\"");
+                                fields.Append(this.DbColumnName(fClass.ShapeFieldName));
                                 parameters.Append(shapeObject.ToString());
                             }
                         }
@@ -609,7 +621,7 @@ namespace gView.Framework.OGC.DB
                             object val = fv.Value;
 
                             DbParameter parameter = this.ProviderFactory.CreateParameter();
-                            parameter.ParameterName = "@" + fvName;
+                            parameter.ParameterName = DbParameterName(fvName);
                             try
                             {
                                 parameter.Value = val;
@@ -621,8 +633,8 @@ namespace gView.Framework.OGC.DB
                             }
                             //NpgsqlParameter parameter = new NpgsqlParameter("@" + fv.Name, val);
 
-                            fields.Append("\"" + fvName + "\"");
-                            parameters.Append("@" + fvName);
+                            fields.Append(this.DbColumnName(fvName));
+                            parameters.Append(DbParameterName(fvName));
                             command.Parameters.Add(parameter);
                         }
 
@@ -700,12 +712,12 @@ namespace gView.Framework.OGC.DB
                                 DbParameter parameter = this.ProviderFactory.CreateParameter();
                                 parameter.ParameterName = "@" + fClass.ShapeFieldName;
                                 parameter.Value = shapeObject != null ? shapeObject : DBNull.Value;
-                                fields.Append("\"" + fClass.ShapeFieldName + "\"=@" + fClass.ShapeFieldName);
+                                fields.Append(DbColumnName(fClass.ShapeFieldName) + "=" + DbParameterName(fClass.ShapeFieldName));
                                 command.Parameters.Add(parameter);
                             }
                             else
                             {
-                                fields.Append("\"" + fClass.ShapeFieldName + "\"=" + shapeObject.ToString());
+                                fields.Append(DbColumnName(fClass.ShapeFieldName) + "=" + shapeObject.ToString());
                             }
                         }
 
@@ -721,10 +733,10 @@ namespace gView.Framework.OGC.DB
                             object val = fv.Value;
 
                             DbParameter parameter = this.ProviderFactory.CreateParameter();
-                            parameter.ParameterName = "@" + fv.Name;
+                            parameter.ParameterName = DbParameterName( fv.Name);
                             parameter.Value = val;
                             //NpgsqlParameter parameter = new NpgsqlParameter("@" + fv.Name, val);
-                            fields.Append("\"" + fv.Name + "\"=@" + fv.Name);
+                            fields.Append(DbColumnName(fv.Name) + "=" + DbParameterName(fv.Name));
                             command.Parameters.Add(parameter);
                         }
 
