@@ -231,7 +231,17 @@ namespace gView.Framework.OGC.DB
 
                         DbDataAdapter adapter = this.ProviderFactory.CreateDataAdapter();
                         adapter.SelectCommand = this.ProviderFactory.CreateCommand();
-                        adapter.SelectCommand.CommandText = "SELECT * FROM " + DbSchemaPrefix + OgcDictionary("geometry_columns") + " WHERE " + OgcDictionary("geometry_columns.f_table_name") + "='" + title + "'";
+
+                        if (title.Contains("."))
+                        {
+                            string schema = title.Split('.')[0];
+                            string table = title.Substring(schema.Length + 1);
+                            adapter.SelectCommand.CommandText = "SELECT * FROM " + DbSchemaPrefix + OgcDictionary("geometry_columns") + " WHERE " + OgcDictionary("geometry_columns.f_table_name") + "='" + table + "' AND " + OgcDictionary("geometry_columns.f_table_schema") + "='" + schema + "'";
+                        }
+                        else
+                        {
+                            adapter.SelectCommand.CommandText = "SELECT * FROM " + DbSchemaPrefix + OgcDictionary("geometry_columns") + " WHERE " + OgcDictionary("geometry_columns.f_table_name") + "='" + title + "'";
+                        }
                         adapter.SelectCommand.Connection = conn;
 
                         adapter.Fill(tab);
@@ -855,6 +865,11 @@ namespace gView.Framework.OGC.DB
             return "SELECT " + DbSchemaPrefix + "AddGeometryColumn ('" + schemaName + "','" + tableName + "','" + colunName + "','" + srid + "','" + geomTypeString + "','2')";
         }
 
+        virtual public string PrimaryKeyField(string tableName)
+        {
+            return String.Empty;
+        }
+
         virtual protected string CreateGidSequence(string tableName)
         {
             return String.Empty;
@@ -910,10 +925,10 @@ namespace gView.Framework.OGC.DB
                         string[] c1 = xy[0].Split(' ');
                         string[] c2 = xy[1].Split(' ');
                         envelope = new Envelope(
-                            Convert.ToDouble(c1[0], gView.Framework.OGC.OGC.numberFormat_EnUS),
-                            Convert.ToDouble(c1[1], gView.Framework.OGC.OGC.numberFormat_EnUS),
-                            Convert.ToDouble(c2[0], gView.Framework.OGC.OGC.numberFormat_EnUS),
-                            Convert.ToDouble(c2[1], gView.Framework.OGC.OGC.numberFormat_EnUS));
+                             gView.Framework.OGC.OGC.ToDouble(c1[0]),
+                             gView.Framework.OGC.OGC.ToDouble(c1[1]),
+                             gView.Framework.OGC.OGC.ToDouble(c2[0]),
+                             gView.Framework.OGC.OGC.ToDouble(c2[1]));
                     }
                     catch { }
                 }

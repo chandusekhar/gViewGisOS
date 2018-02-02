@@ -29,9 +29,23 @@ namespace gView.Framework.OGC.DB
             {
                 _lastException = null;
 
-                _name = geometry_columns_row[_dataset.OgcDictionary("geometry_columns.f_table_name")].ToString();
+                string schema = String.Empty;
+                try
+                {
+                    if (!String.IsNullOrEmpty(_dataset.OgcDictionary("geometry_columns.f_table_schema")))
+                        schema = geometry_columns_row[_dataset.OgcDictionary("geometry_columns.f_table_schema")].ToString();
+                    if (!String.IsNullOrEmpty(schema))
+                        schema += ".";
+                }
+                catch { schema = ""; }
+                _name = schema + geometry_columns_row[_dataset.OgcDictionary("geometry_columns.f_table_name")].ToString();
                 _shapefield = geometry_columns_row[_dataset.OgcDictionary("geometry_columns.f_geometry_column")].ToString();
                 _idfield = _dataset.OgcDictionary("gid");
+
+                // Read Primary Key -> PostGIS id is not always "gid";
+                string pKey = GetPKey();
+                if (!String.IsNullOrWhiteSpace(pKey) && !pKey.Equals(_idfield))
+                    _idfield = pKey;
 
                 _geometry_columns_type = geometry_columns_row[_dataset.OgcDictionary("geometry_columns.type")].ToString().ToUpper();
                 switch (_geometry_columns_type)
@@ -50,6 +64,8 @@ namespace gView.Framework.OGC.DB
                         break;
                     case "POINT":
                     case "POINTM":
+                    case "MULTIPOINT":
+                    case "MULTIPOINTM":
                         _geomType = geometryType.Point;
                         break;
                     default:
@@ -181,6 +197,30 @@ namespace gView.Framework.OGC.DB
         public string GeometryTypeString
         {
             get { return _geometry_columns_type; }
+        }
+
+        private string GetPKey()
+        {
+            string pKeySelect = _dataset.PrimaryKeyField(_name);
+            try
+            {
+                if (!String.IsNullOrWhiteSpace(pKeySelect))
+                {
+                    using (DbConnection connection = _dataset.ProviderFactory.CreateConnection())
+                    {
+                        connection.ConnectionString = _dataset.ConnectionString; ;
+                        connection.Open();
+
+                        DbCommand command = _dataset.ProviderFactory.CreateCommand();
+                        command.CommandText = pKeySelect;
+                        command.Connection = connection;
+
+                        return command.ExecuteScalar()?.ToString();
+                    }
+                }
+            }
+            catch { }
+            return String.Empty;
         }
 
         #region IFeatureClass Member

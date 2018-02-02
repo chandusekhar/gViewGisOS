@@ -142,9 +142,10 @@ namespace gView.DataSources.PostGIS
 
         public override string DbTableName(string tableName)
         {
-            string schema = GetTableDbSchema(tableName), tabName = "\"" + tableName + "\"";
+            string schema = GetTableDbSchema(tableName);
+            string tabName = "\"" + tableName.Replace(".", "\".\"") + "\"";  // falls tablename schon schema enthält -> . durch "." ersetzen -> "schema"."tablename"
 
-            return String.IsNullOrEmpty(schema) ? tabName : schema + "." + tabName;
+            return String.IsNullOrEmpty(schema) ? tabName : "\"" + schema + "\"" + "." + tabName;
         }
 
         protected override string AddGeometryColumn(string schemaName, string tableName, string colunName, string srid, string geomTypeString)
@@ -190,6 +191,9 @@ namespace gView.DataSources.PostGIS
         {
             try
             {
+                if (tableName.Contains("."))  // Tablename includes schema
+                    return String.Empty;
+
                 if (_tableDbSchema.ContainsKey(tableName))
                     return _tableDbSchema[tableName];
 
@@ -236,7 +240,7 @@ namespace gView.DataSources.PostGIS
                     switch (command)
                     {
                         case EditCommands.Insert:
-                            _errMsg = "Can't insert features for geometrytype " + ogcFc.GeometryTypeString+".";
+                            _errMsg = "Can't insert features for geometrytype " + ogcFc.GeometryTypeString + ".";
                             return false;
                         case EditCommands.Update:
                             _errMsg = "Can't update features for geometrytype " + ogcFc.GeometryTypeString + ".";
@@ -244,9 +248,40 @@ namespace gView.DataSources.PostGIS
                     }
                 }
                 return true;
-                    
+
             }
             return false;
+        }
+
+        public override string PrimaryKeyField(string tableName)
+        {
+            string schema = "";
+            if (tableName.Contains("."))
+            {
+                schema = tableName.Split('.')[0];
+                tableName = tableName.Substring(schema.Length + 1);
+            }
+
+            if (!String.IsNullOrWhiteSpace(schema))
+            {
+                return @"SELECT
+c.column_name
+FROM
+information_schema.table_constraints tc 
+JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name) 
+JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
+where constraint_type = 'PRIMARY KEY' and tc.table_schema='" + schema + "' and tc.table_name = '" + tableName + "'";
+            }
+            else
+            {
+                return @"SELECT
+c.column_name
+FROM
+information_schema.table_constraints tc 
+JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name) 
+JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
+where constraint_type = 'PRIMARY KEY' and tc.table_name = '" + tableName + "'";
+            }
         }
     }
 }
