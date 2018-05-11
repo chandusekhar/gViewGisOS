@@ -1104,7 +1104,7 @@ namespace gView.Framework.Symbology
             }
             else if (geometry is IMultiPoint)
             {
-                for (int i = 0; i < ((IMultiPoint)geometry).PointCount; i++)
+                for (int i = 0, to = ((IMultiPoint)geometry).PointCount; i < to; i++)
                 {
                     IPoint p = ((IMultiPoint)geometry)[i];
                     Draw(display, p);
@@ -1374,6 +1374,7 @@ namespace gView.Framework.Symbology
         #endregion
     }
 
+
     [gView.Framework.system.RegisterPlugIn("71E22086-D511-4a41-AAE1-BBC78572F277")]
     public sealed class TrueTypeMarkerSymbol : LegendItem, IPropertyPage, IPointSymbol, ISymbolRotation, IFontColor, ISymbolPositioningUI, ISymbolSize
     {
@@ -1536,6 +1537,14 @@ namespace gView.Framework.Symbology
                 display.World2Image(ref x, ref y);
                 IPoint p = new gView.Framework.Geometry.Point(x, y);
                 DrawPoint(display, p);
+            }
+            else if (geometry is IMultiPoint)
+            {
+                for (int i = 0, to=((IMultiPoint)geometry).PointCount; i < to; i++)
+                {
+                    IPoint p = ((IMultiPoint)geometry)[i];
+                    Draw(display, p);
+                }
             }
         }
 
@@ -1855,6 +1864,14 @@ namespace gView.Framework.Symbology
                 display.World2Image(ref x, ref y);
                 IPoint p = new gView.Framework.Geometry.Point(x, y);
                 DrawPoint(display, p);
+            }
+            else if (geometry is IMultiPoint)
+            {
+                for (int i = 0, to = ((IMultiPoint)geometry).PointCount; i < to; i++)
+                {
+                    IPoint p = ((IMultiPoint)geometry)[i];
+                    Draw(display, p);
+                }
             }
         }
 
