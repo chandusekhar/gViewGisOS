@@ -20,6 +20,7 @@ using gView.Framework.Globalisation;
 using System.Text;
 using gView.Plugins.MapTools.Dialogs;
 using gView.Plugins.MapTools.Controls;
+using gView.system.UI.Framework.system.UI;
 
 namespace gView.Plugins.MapTools
 {
@@ -491,9 +492,25 @@ namespace gView.Plugins.MapTools
                     if (_doc.Application is IGUIApplication)
                         ((IGUIApplication)_doc.Application).SetCursor(Cursors.WaitCursor);
 
-                    XmlStream stream = new XmlStream("MapDocument");
-                    stream.Save("IMap", map);
-                    stream.ReduceDocument("//IMap");
+                    XmlStream stream;
+
+                    if (dlg.Version == FormPublishMap.ServerVersion.gViewServer5)
+                    {
+                        var mapDocument = new MapDocument(_doc.Application as IMapApplication);
+                        mapDocument.AddMap(map);
+
+                        stream = new XmlStream("root");
+                        stream.Save("MapDocument", mapDocument);
+
+                        stream.ReduceDocument("//MapDocument");
+                    }
+                    else
+                    {
+                        stream = new XmlStream("MapDocument");
+                        stream.Save("IMap", map);
+
+                        stream.ReduceDocument("//IMap");
+                    }
 
                     StringBuilder sb = new StringBuilder();
                     StringWriter sw = new StringWriter(sb);
@@ -502,9 +519,12 @@ namespace gView.Plugins.MapTools
                     //gView.MapServer.Connector.MapServerInstanceTypeService proxy = new gView.MapServer.Connector.MapServerInstanceTypeService(
                     //    dlg.Server + ":" + dlg.Port.ToString());
 
-                    gView.MapServer.Connector.MapServerConnection service = new MapServer.Connector.MapServerConnection(dlg.Server + ":" + dlg.Port.ToString());
+                    string serverUrl = MapServer.Connector.MapServerConnection.ServerUrl(dlg.Server,dlg.Port);
+                    gView.MapServer.Connector.MapServerConnection service = new MapServer.Connector.MapServerConnection(serverUrl);
                     if (!service.AddMap(dlg.ServiceName, sb.ToString(), dlg.Username, dlg.Password))
-                        throw new Exception("Unable to add service...");
+                    {
+                        throw new Exception("Unable to add service..." + Environment.NewLine + service.lastErrorMsg);
+                    }
 
                     if (_doc.Application is IGUIApplication)
                         ((IGUIApplication)_doc.Application).SetCursor(Cursors.Default);
@@ -516,7 +536,7 @@ namespace gView.Plugins.MapTools
                     if (_doc.Application is IGUIApplication)
                         ((IGUIApplication)_doc.Application).SetCursor(Cursors.Default);
 
-                    MessageBox.Show(ex.Message, "Exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    FormToolException.Show("Publish Map", ex.Message);
                 }
 
 
